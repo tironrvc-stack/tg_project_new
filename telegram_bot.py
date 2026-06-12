@@ -84,9 +84,25 @@ async def main():
             log.error("  FAIL %-30s → %s", src, e)
 
     if not resolved:
-        raise RuntimeError("Не удалось зарезолвить ни один канал — проверь, что аккаунт подписан на них.")
+        raise RuntimeError("Не удалось зарезолвить ни один канал.")
 
     log.info("Зарезолвлено каналов: %d / %d", len(resolved), len(SOURCES))
+
+    # Автоподписка: вступаем в каналы, где аккаунт ещё не участник.
+    # Без этого NewMessage события не приходят.
+    from telethon.tl.functions.channels import JoinChannelRequest
+    from telethon.errors import FloodWaitError
+    for entity in resolved:
+        try:
+            await client(JoinChannelRequest(entity))
+            log.info("  JOINED %s", getattr(entity, "username", entity.id))
+        except FloodWaitError as e:
+            log.warning("  FloodWait %ds перед подпиской на %s, жду...", e.seconds, getattr(entity, "username", entity.id))
+            await asyncio.sleep(e.seconds + 2)
+            await client(JoinChannelRequest(entity))
+        except Exception as e:
+            # Уже участник или другая некритичная ошибка
+            log.info("  SKIP join %s: %s", getattr(entity, "username", entity.id), e)
 
     # Подписываемся на уже зарезолвленные entity, а не на строки —
     # это гарантирует, что Telethon точно знает id каждого чата
