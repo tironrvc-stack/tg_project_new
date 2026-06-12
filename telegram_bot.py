@@ -26,9 +26,7 @@ SOURCES = [
     "@kremlin_secrets",
 ]
 
-# Интервал поллинга в секундах (каждые 60 сек проверяем последние посты)
 POLL_INTERVAL = 60
-# Сколько последних сообщений проверять при каждом поллинге
 POLL_LIMIT = 5
 # =====================
 
@@ -61,11 +59,9 @@ async def safe_forward(client, msg, username):
     return True
 
 async def poll_channel(client, entity):
-    """Активно опрашивает канал и пересылает новые посты."""
     username = getattr(entity, "username", None) or str(entity.id)
     try:
         async for msg in client.iter_messages(entity, limit=POLL_LIMIT):
-            # Пропускаем сообщения старше 2 минут (уже должны были прийти через events)
             if now() - msg.date.timestamp() > 120:
                 break
             await safe_forward(client, msg, username)
@@ -73,13 +69,12 @@ async def poll_channel(client, entity):
         log.error("POLL ERROR @%s: %s", username, e)
 
 async def polling_loop(client, resolved):
-    """Резервный цикл поллинга — на случай если events не приходят."""
     log.info("Polling loop started (interval=%ds)", POLL_INTERVAL)
     while True:
         await asyncio.sleep(POLL_INTERVAL)
         for entity in resolved:
             await poll_channel(client, entity)
-            await asyncio.sleep(1)  # небольшая пауза между каналами
+            await asyncio.sleep(1)
 
 async def main():
     client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
@@ -116,7 +111,23 @@ async def main():
         except Exception as e:
             log.info("SKIP join @%s (%s)", uname, e)
 
-    # Обработчик событий (основной путь)
+    # === ТЕСТ: пересылаем последний пост из первого канала ===
+    log.info("=== STARTUP TEST: пробуем переслать последний пост из %s ===", SOURCES[0])
+    try:
+        target_entity = await client.get_entity(TARGET_CHANNEL)
+        log.info("TARGET OK: %s (id=%s)", getattr(target_entity, "title", TARGET_CHANNEL), target_entity.id)
+        msgs = await client.get_messages(resolved[0], limit=1)
+        if msgs:
+            test_msg = msgs[0]
+            log.info("TEST MSG: id=%s date=%s text=%s", test_msg.id, test_msg.date, repr((test_msg.text or "")[:60]))
+            await client.forward_messages(target_entity, test_msg)
+            log.info("=== TEST FORWARD OK ===")
+        else:
+            log.warning("=== TEST: нет сообщений в канале ===")
+    except Exception as e:
+        log.error("=== TEST FORWARD FAILED: %s ===", e)
+
+    # Обработчик событий
     @client.on(events.NewMessage(chats=resolved))
     async def handler(event):
         try:
@@ -129,7 +140,6 @@ async def main():
 
     log.info("BOT RUNNING — events + polling active")
 
-    # Запускаем polling параллельно с ожиданием событий
     await asyncio.gather(
         client.run_until_disconnected(),
         polling_loop(client, resolved),
