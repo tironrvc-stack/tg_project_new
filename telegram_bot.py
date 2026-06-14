@@ -14,7 +14,7 @@ log = logging.getLogger(__name__)
 # =====================
 API_ID = 33712211
 API_HASH = "1e351585faf127c9232bae691b7465bd"
-SESSION_STRING = "1ApWapzMBu1NyFDuIod_aWp1By2BQmh6JqfZ4c19ddYy6EUM52UGoVEMQuAejZIdsuxC3w2ipbcFDSoa-xNiiXq6XnU9IUzt0zNaO87YkxK2zfLppbeJvp1t53ciTZyw7fiv9lJxz-SmeCCUJ6HNBNKJhSF_Z-unwYh0g-ZRPlNB_VwV_EOOFQwO9mURaMjnEt_6Qd3BqQ-WNpaEgZG9McnXu7em4if5LHjQ8fbbfJ_XCPIQeedXsaEdwq0Xo9M-QDxuXIFNlY8wbbL00UKZ3__tk8jATHhX9LJY88oGToFbxMi9BJUWbMoHDGYXVa6pbRIpg-0CXai74-d9-5j51lESnBJmknvg="
+SESSION_STRING = "1ApWapzMBuwLtKA5NsDjhRL7AAF_7u8rolNPyLWGwtitJvTwwZO6k2uW5q4imJeG8xvRuWpnKWaFFfkNctP0hLAOLukCLWIK7ErStUSWH7U11obTqqWwAfN-8HVta_ftKd1IRGeByERqsdBUu-xEYyEoYixd8XHFdiVAHXWqZx8Z2bM_04BWXmfn05dBYS28FM8lrl9c40EHWfJXP9MPaFhTIPanotbLbIr6K9QfDt3t1a6vTXhxUgc7TSzSD-iD1tKtTtLfILFE4lz4gtEdA9eiFUOdtTzkebX76-jFuIqeB-y8x1ftQWmYDix_wQCCJvw7gHmJ1MBsfnGJUIWGZ3MHmKtSdLh4="
 TARGET_CHANNEL = "@svodkarkd"
 
 SOURCES = [
@@ -181,8 +181,4 @@ async def main():
         return_exceptions=True,
     )
 
-try:
-    asyncio.run(main())
-except Exception as e:
-    log.error("FATAL: %s", e)
-    raise
+asyncio.run(main())
