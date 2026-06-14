@@ -27,7 +27,7 @@ SOURCES = [
 ]
 
 POLL_INTERVAL = 30
-POLL_LIMIT = 5
+POLL_LIMIT = 10
 # =====================
 
 def now():
@@ -47,8 +47,39 @@ def _mark(fp: str):
     conn.execute("INSERT OR REPLACE INTO seen VALUES (?,?)", (fp, now()))
     conn.commit()
 
+def _seen_group(grouped_id: int) -> bool:
+    fp = f"group:{grouped_id}"
+    return conn.execute("SELECT 1 FROM seen WHERE fp=?", (fp,)).fetchone() is not None
+
+def _mark_group(grouped_id: int):
+    fp = f"group:{grouped_id}"
+    conn.execute("INSERT OR REPLACE INTO seen VALUES (?,?)", (fp, now()))
+    conn.commit()
+
 async def safe_forward(client, msg, username):
     loop = asyncio.get_event_loop()
+
+    # Если это часть медиагруппы — пересылаем всю группу целиком
+    if msg.grouped_id:
+        already = await loop.run_in_executor(None, _seen_group, msg.grouped_id)
+        if already:
+            return False
+        # Получаем все сообщения группы
+        group_msgs = await client.get_messages(
+            await client.get_entity(username),
+            min_id=msg.id - 15,
+            max_id=msg.id + 15,
+            limit=20
+        )
+        group = [m for m in group_msgs if m.grouped_id == msg.grouped_id]
+        group.sort(key=lambda m: m.id)
+        if group:
+            await client.forward_messages(TARGET_CHANNEL, group)
+            await loop.run_in_executor(None, _mark_group, msg.grouped_id)
+            log.info("FORWARDED GROUP from @%s (%d msgs, grouped_id=%s)", username, len(group), msg.grouped_id)
+        return True
+
+    # Обычное одиночное сообщение
     fp = hashlib.sha256(f"{username}:{msg.id}".encode()).hexdigest()
     already = await loop.run_in_executor(None, _seen, fp)
     if already:
@@ -111,18 +142,6 @@ async def main():
         except Exception as e:
             log.info("SKIP join @%s (%s)", uname, e)
 
-    # Тест пересылки при старте
-    log.info("=== STARTUP TEST ===")
-    try:
-        target_entity = await client.get_entity(TARGET_CHANNEL)
-        log.info("TARGET OK: %s (id=%s)", getattr(target_entity, "title", TARGET_CHANNEL), target_entity.id)
-        msgs = await client.get_messages(resolved[0], limit=1)
-        if msgs:
-            await client.forward_messages(target_entity, msgs[0])
-            log.info("=== TEST FORWARD OK ===")
-    except Exception as e:
-        log.error("=== TEST FORWARD FAILED: %s ===", e)
-
     # Обработчик событий
     @client.on(events.NewMessage(chats=resolved))
     async def handler(event):
@@ -136,7 +155,6 @@ async def main():
 
     log.info("BOT RUNNING — events + polling active")
 
-    # Запускаем оба цикла, перехватываем любые исключения чтобы не упасть
     async def run_client():
         while True:
             try:
