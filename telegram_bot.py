@@ -26,7 +26,7 @@ SOURCES = [
     "@kremlin_secrets",
 ]
 
-POLL_INTERVAL = 60
+POLL_INTERVAL = 30
 POLL_LIMIT = 5
 # =====================
 
@@ -62,7 +62,7 @@ async def poll_channel(client, entity):
     username = getattr(entity, "username", None) or str(entity.id)
     try:
         async for msg in client.iter_messages(entity, limit=POLL_LIMIT):
-            if now() - msg.date.timestamp() > 120:
+            if now() - msg.date.timestamp() > 180:
                 break
             await safe_forward(client, msg, username)
     except Exception as e:
@@ -136,9 +136,31 @@ async def main():
 
     log.info("BOT RUNNING — events + polling active")
 
+    # Запускаем оба цикла, перехватываем любые исключения чтобы не упасть
+    async def run_client():
+        while True:
+            try:
+                await client.run_until_disconnected()
+            except Exception as e:
+                log.error("Client disconnected: %s — reconnecting in 10s", e)
+                await asyncio.sleep(10)
+                try:
+                    await client.connect()
+                except Exception as ce:
+                    log.error("Reconnect failed: %s", ce)
+
+    async def run_polling():
+        while True:
+            try:
+                await polling_loop(client, resolved)
+            except Exception as e:
+                log.error("Polling loop crashed: %s — restarting in 10s", e)
+                await asyncio.sleep(10)
+
     await asyncio.gather(
-        client.run_until_disconnected(),
-        polling_loop(client, resolved),
+        run_client(),
+        run_polling(),
+        return_exceptions=True,
     )
 
 asyncio.run(main())
