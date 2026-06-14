@@ -12,9 +12,9 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 # =====================
-API_ID = 39023948
-API_HASH = "4fe47fcdb69a5c9886d7c4ac3069caa4"
-SESSION_STRING = "1ApWapzMBuxvqQ4GR_NP7787nHHcNe0zHd4jobUFZ7ynt3S8IKTWWPfoXrhQef2TVH16XaUg00peb7g3JDShl2Q3hCpFIkewXvXPG2sN7LX6eUubKPudF9zd3O0jWqRPUlOiIgSq4YAPxUTuAE9PSsOJZ1kMquqQEuEWkDb0TQRty6oSgk18qOvcea_LdT8OMatYD_uspfKc4k_2GYSQrDWAu3Vybv8MspcNwTZ11sZ2XIsuXbdhqFsjbPS3v6eqxsqwpXvCDwSnwNpOOSQWu1dU2ayvLQflJ7sPVXStXqhXkJep1z17xGueEn7awkhDcSco9fjHoa893XKMVH4uWF8cJ3Aq9FkE="
+API_ID = 33712211
+API_HASH = "1e351585faf127c9232bae691b7465bd"
+SESSION_STRING = "1ApWapzMBu1Er1J5ILZptA2JL0JW7BPz2ty9-OcjtqqlanX0s0ioSJUI59-886xdH59ZrStKIlqfKxXbKJ-9Ed0tj7RjjsB1OQFUVtGD-xsvILJQEloUfTCYQeP_QaZBD_Ah5pNjTOIr2C8aikC7Y59sLyvUbjgTWThIns_olq5lcCZT2xcxceH94wevxaY8YxWVaTdU10iMFkLsM8Rj83j36LXF592lt9odZfKMm_eZCwsKgiWFk65c2EX5G55bHQWOg9M_rCojPD7Ovd9iuR2V4vYUNwOxtUTA8k_hVqVBs6hPPb3qXbo0evx6w-wZs144smtXlnsf88jk2HYI0-Hze3Dv7Gy4="
 TARGET_CHANNEL = "@svodkarkd"
 
 SOURCES = [
@@ -111,19 +111,15 @@ async def main():
         except Exception as e:
             log.info("SKIP join @%s (%s)", uname, e)
 
-    # === ТЕСТ: пересылаем последний пост из первого канала ===
-    log.info("=== STARTUP TEST: пробуем переслать последний пост из %s ===", SOURCES[0])
+    # Тест пересылки при старте
+    log.info("=== STARTUP TEST ===")
     try:
         target_entity = await client.get_entity(TARGET_CHANNEL)
         log.info("TARGET OK: %s (id=%s)", getattr(target_entity, "title", TARGET_CHANNEL), target_entity.id)
         msgs = await client.get_messages(resolved[0], limit=1)
         if msgs:
-            test_msg = msgs[0]
-            log.info("TEST MSG: id=%s date=%s text=%s", test_msg.id, test_msg.date, repr((test_msg.text or "")[:60]))
-            await client.forward_messages(target_entity, test_msg)
+            await client.forward_messages(target_entity, msgs[0])
             log.info("=== TEST FORWARD OK ===")
-        else:
-            log.warning("=== TEST: нет сообщений в канале ===")
     except Exception as e:
         log.error("=== TEST FORWARD FAILED: %s ===", e)
 
