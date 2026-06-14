@@ -181,4 +181,8 @@ async def main():
         return_exceptions=True,
     )
 
-asyncio.run(main())
+try:
+    asyncio.run(main())
+except Exception as e:
+    log.error("FATAL: %s", e)
+    raise
